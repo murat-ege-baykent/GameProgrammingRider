@@ -1,0 +1,46 @@
+using UnityEngine;
+using UnityEngine.U2D;
+
+[ExecuteInEditMode]
+public class EnvironmentGenerator : MonoBehaviour
+{
+    [SerializeField] private SpriteShapeController _spriteShapeController;
+
+    [SerializeField, Range(3, 100)] private int _levelLength = 50;
+    [SerializeField, Range(1f, 50f)] private float _xMultiplier = 2f;
+    [SerializeField, Range(1f, 50f)] private float _yMultiplier = 2f;
+    [SerializeField, Range(0.1f, 10f)] private float _curveSmoothness = 0.5f;
+    [SerializeField] private float _noiseStep = 0.5f;
+    [SerializeField] private float _bottom = 10f;
+
+    private Vector3 _lastPos;
+
+    private void OnValidate()
+    {
+        if (_spriteShapeController == null)
+            return;
+
+        var spline = _spriteShapeController.spline;
+        spline.Clear();
+
+        // Generate the top terrain points
+        for (int i = 0; i < _levelLength; i++)
+        {
+            float y = Mathf.PerlinNoise(0, i * _noiseStep) * _yMultiplier;
+            _lastPos = transform.position + new Vector3(i * _xMultiplier, y, 0);
+            spline.InsertPointAt(i, _lastPos);
+
+            // Set tangents for smooth curves (skip first and last point)
+            if (i != 0 && i != _levelLength - 1)
+            {
+                spline.SetTangentMode(i, ShapeTangentMode.Continuous);
+                spline.SetLeftTangent(i, Vector3.left * _xMultiplier * _curveSmoothness);
+                spline.SetRightTangent(i, Vector3.right * _xMultiplier * _curveSmoothness);
+            }
+        }
+
+        // Generate the bottom points to close the shape
+        spline.InsertPointAt(_levelLength, new Vector3(_lastPos.x, transform.position.y - _bottom, 0));
+        spline.InsertPointAt(_levelLength + 1, new Vector3(transform.position.x, transform.position.y - _bottom, 0));
+    }
+}
